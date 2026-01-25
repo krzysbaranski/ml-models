@@ -7,7 +7,6 @@ from fastapi.responses import Response, JSONResponse
 import cv2
 import numpy as np
 from object_detector import ObjectDetector
-import io
 
 
 app = FastAPI(
