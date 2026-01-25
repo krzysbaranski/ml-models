@@ -84,17 +84,14 @@ async def detect_objects(
             if image_format.lower() == "png":
                 encode_param = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]
                 ext = ".png"
-                media_type = "image/png"
             else:
                 encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
                 ext = ".jpg"
-                media_type = "image/jpeg"
             
             _, buffer = cv2.imencode(ext, annotated_image, encode_param)
             image_bytes = buffer.tobytes()
             
-            # Return multipart response with JSON header and image
-            # For simplicity, we'll return JSON with base64 encoded image
+            # Return JSON with base64 encoded image
             response_data["annotated_image"] = base64.b64encode(image_bytes).decode('utf-8')
             response_data["image_format"] = image_format
         

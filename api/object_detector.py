@@ -12,6 +12,12 @@ import cv2
 import numpy as np
 from typing import List
 
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+
 
 # Model configuration
 MODEL_URL = "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/latest/efficientdet_lite0.tflite"
@@ -43,14 +49,13 @@ class ObjectDetector:
             
             try:
                 # Try to download with requests library if available
-                try:
-                    import requests
+                if REQUESTS_AVAILABLE:
                     response = requests.get(MODEL_URL, timeout=30)
                     response.raise_for_status()
                     with open(self.model_path, 'wb') as f:
                         f.write(response.content)
                     print(f"Model downloaded to {self.model_path}")
-                except ImportError:
+                else:
                     # Fall back to urllib with headers
                     req = urllib.request.Request(
                         MODEL_URL,
