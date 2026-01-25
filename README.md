@@ -13,7 +13,17 @@ A standalone API service for object detection on single image frames, suitable f
 
 ## Quick Start
 
-### Option 1: Run with Docker (Recommended)
+### Option 1: Run with Docker Compose (Easiest)
+
+```bash
+docker-compose up
+```
+
+The API will be available at `http://localhost:8000`
+
+The model will be automatically downloaded on first run.
+
+### Option 2: Run with Docker
 
 1. **Build the Docker image:**
 ```bash
@@ -27,7 +37,7 @@ docker run -p 8000:8000 object-detection-api
 
 The API will be available at `http://localhost:8000`
 
-### Option 2: Run Locally
+### Option 3: Run Locally
 
 1. **Install dependencies:**
 ```bash
