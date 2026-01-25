@@ -39,8 +39,42 @@ class ObjectDetector:
         if not os.path.exists(self.model_path):
             os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
             print(f"Downloading model from {MODEL_URL}...")
-            urllib.request.urlretrieve(MODEL_URL, self.model_path)
-            print(f"Model downloaded to {self.model_path}")
+            
+            try:
+                # Try to download with requests library if available
+                try:
+                    import requests
+                    response = requests.get(MODEL_URL, timeout=30)
+                    response.raise_for_status()
+                    with open(self.model_path, 'wb') as f:
+                        f.write(response.content)
+                    print(f"Model downloaded to {self.model_path}")
+                except ImportError:
+                    # Fall back to urllib with headers
+                    req = urllib.request.Request(
+                        MODEL_URL,
+                        headers={'User-Agent': 'Mozilla/5.0'}
+                    )
+                    
+                    with urllib.request.urlopen(req, timeout=30) as response:
+                        with open(self.model_path, 'wb') as out_file:
+                            out_file.write(response.read())
+                    
+                    print(f"Model downloaded to {self.model_path}")
+            except Exception as e:
+                error_msg = f"""
+                Failed to download model: {str(e)}
+                
+                Please manually download the model from:
+                {MODEL_URL}
+                
+                And save it to:
+                {self.model_path}
+                
+                Or run:
+                wget -O {self.model_path} {MODEL_URL}
+                """
+                raise RuntimeError(error_msg)
     
     def detect(self, image: np.ndarray) -> vision.ObjectDetectorResult:
         """

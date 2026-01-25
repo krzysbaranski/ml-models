@@ -34,13 +34,23 @@ The API will be available at `http://localhost:8000`
 pip install -r requirements.txt
 ```
 
-2. **Run the API:**
+2. **(Optional) Pre-download the model:**
+```bash
+./download_model.sh
+```
+
+Or manually download from: https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/latest/efficientdet_lite0.tflite
+and save to `models/efficientdet_lite0.tflite`
+
+3. **Run the API:**
 ```bash
 cd api
 python app.py
 ```
 
 The API will be available at `http://localhost:8000`
+
+**Note:** The model will be automatically downloaded on first run if not already present.
 
 ## API Endpoints
 
@@ -234,10 +244,15 @@ ml-models/
 ├── api/
 │   ├── app.py              # FastAPI application
 │   └── object_detector.py  # MediaPipe object detection wrapper
+├── examples/               # Example usage scripts
+│   ├── client_example.py   # Python client example
+│   ├── security_monitor.py # Continuous monitoring example
+│   └── test_api.sh         # Bash testing script
 ├── models/                 # Model files (auto-downloaded)
 │   └── efficientdet_lite0.tflite
 ├── Dockerfile             # Docker configuration
 ├── requirements.txt       # Python dependencies
+├── download_model.sh      # Script to manually download model
 └── README.md             # This file
 ```
 
@@ -277,11 +292,41 @@ options = vision.ObjectDetectorOptions(
 ### Model download fails
 - Check internet connectivity
 - Verify firewall settings allow access to `storage.googleapis.com`
+- Try manually downloading the model using `./download_model.sh`
+- Or download directly from the URL and place in `models/` directory
 
 ### Poor detection quality
 - Adjust `score_threshold` in the detector options
 - Ensure images are well-lit and in focus
 - Try different camera angles
+
+## Example Scripts
+
+The `examples/` directory contains ready-to-use scripts:
+
+### 1. Python Client Example (`client_example.py`)
+Simple Python client demonstrating API usage:
+```bash
+python examples/client_example.py path/to/image.jpg
+```
+
+### 2. Security Camera Monitor (`security_monitor.py`)
+Continuous monitoring script for home security cameras:
+```bash
+python examples/security_monitor.py /path/to/camera/frame.jpg
+```
+
+This script:
+- Continuously monitors camera frames
+- Triggers alerts for specific object categories (person, car, etc.)
+- Logs all detections
+- Can be customized for notifications, recording, etc.
+
+### 3. API Testing Script (`test_api.sh`)
+Bash script to test all API endpoints:
+```bash
+./examples/test_api.sh test_image.jpg
+```
 
 ## License
 
