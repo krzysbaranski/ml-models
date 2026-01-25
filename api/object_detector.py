@@ -4,6 +4,7 @@ Provides object detection functionality using MediaPipe's TFLite model
 """
 import os
 import urllib.request
+import textwrap
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -62,18 +63,18 @@ class ObjectDetector:
                     
                     print(f"Model downloaded to {self.model_path}")
             except Exception as e:
-                error_msg = f"""
-                Failed to download model: {str(e)}
-                
-                Please manually download the model from:
-                {MODEL_URL}
-                
-                And save it to:
-                {self.model_path}
-                
-                Or run:
-                wget -O {self.model_path} {MODEL_URL}
-                """
+                error_msg = textwrap.dedent(f"""
+                    Failed to download model: {str(e)}
+                    
+                    Please manually download the model from:
+                    {MODEL_URL}
+                    
+                    And save it to:
+                    {self.model_path}
+                    
+                    Or run:
+                    wget -O {self.model_path} {MODEL_URL}
+                """)
                 raise RuntimeError(error_msg)
     
     def detect(self, image: np.ndarray) -> vision.ObjectDetectorResult:

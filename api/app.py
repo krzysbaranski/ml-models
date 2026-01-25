@@ -2,6 +2,7 @@
 FastAPI application for object detection on image frames
 Suitable for integration with home security camera systems
 """
+import base64
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import Response, JSONResponse
 import cv2
@@ -94,7 +95,6 @@ async def detect_objects(
             
             # Return multipart response with JSON header and image
             # For simplicity, we'll return JSON with base64 encoded image
-            import base64
             response_data["annotated_image"] = base64.b64encode(image_bytes).decode('utf-8')
             response_data["image_format"] = image_format
         
