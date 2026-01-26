@@ -15,7 +15,7 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 # Model configuration
-MODEL_PATH = "models/efficientdet_lite0.tflite"
+MODEL_PATH = "../models/efficientdet_lite0.tflite"
 
 
 class ObjectDetector:
@@ -30,7 +30,8 @@ class ObjectDetector:
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(
                 f"Model file not found at {self.model_path}. "
-                f"Please ensure the model file is present in the repository."
+                f"The model should be bundled in the Docker image. "
+                f"If running locally, ensure the model file exists at the specified path."
             )
         
         # Create an ObjectDetector object
