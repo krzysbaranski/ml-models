@@ -191,6 +191,26 @@
             display: block;
         }
         
+        .options {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .options label {
+            color: #666;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .options select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
         @media (max-width: 768px) {
             .image-container {
                 grid-template-columns: 1fr;
@@ -212,6 +232,14 @@
             <div class="upload-text">Click to upload or drag and drop</div>
             <div class="upload-subtext">Supported formats: JPEG, PNG, GIF, BMP</div>
             <input type="file" id="fileInput" accept="image/*">
+        </div>
+        
+        <div class="options">
+            <label for="formatSelect">Output Format:</label>
+            <select id="formatSelect">
+                <option value="jpeg">JPEG</option>
+                <option value="png">PNG</option>
+            </select>
         </div>
         
         <div class="loading" id="loading">
@@ -242,11 +270,15 @@
     <script>
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
+        const formatSelect = document.getElementById('formatSelect');
         const previewContainer = document.getElementById('previewContainer');
         const loading = document.getElementById('loading');
         const originalImage = document.getElementById('originalImage');
         const annotatedImage = document.getElementById('annotatedImage');
         const errorDiv = document.getElementById('error');
+        
+        // Keep track of blob URLs to revoke them when no longer needed
+        let currentAnnotatedImageUrl = null;
         
         // Click to upload
         uploadArea.addEventListener('click', () => {
@@ -299,6 +331,12 @@
         }
         
         async function uploadImage(file) {
+            // Revoke previous blob URL to prevent memory leak
+            if (currentAnnotatedImageUrl) {
+                URL.revokeObjectURL(currentAnnotatedImageUrl);
+                currentAnnotatedImageUrl = null;
+            }
+            
             // Hide previous results and errors
             previewContainer.classList.remove('active');
             errorDiv.classList.remove('active');
@@ -308,7 +346,7 @@
             try {
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('image_format', 'jpeg');
+                formData.append('image_format', formatSelect.value);
                 
                 const response = await fetch('/detect/image', {
                     method: 'POST',
@@ -321,6 +359,7 @@
                 
                 const blob = await response.blob();
                 const imageUrl = URL.createObjectURL(blob);
+                currentAnnotatedImageUrl = imageUrl;
                 annotatedImage.src = imageUrl;
                 
                 // Show results
@@ -335,6 +374,12 @@
         }
         
         function uploadAnother() {
+            // Revoke blob URL when user uploads a new image
+            if (currentAnnotatedImageUrl) {
+                URL.revokeObjectURL(currentAnnotatedImageUrl);
+                currentAnnotatedImageUrl = null;
+            }
+            
             previewContainer.classList.remove('active');
             uploadArea.style.display = 'block';
             fileInput.value = '';
