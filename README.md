@@ -13,7 +13,18 @@ A standalone API service for object detection on single image frames, suitable f
 
 ## Quick Start
 
-### Option 1: Run with Docker Compose (Easiest)
+### Option 1: Pull from Docker Hub (Recommended)
+
+```bash
+docker pull <your-dockerhub-username>/ml-models:latest
+docker run -p 8000:8000 <your-dockerhub-username>/ml-models:latest
+```
+
+The API will be available at `http://localhost:8000`
+
+The model will be automatically downloaded on first run.
+
+### Option 2: Run with Docker Compose (Easiest for Development)
 
 ```bash
 docker-compose up
@@ -23,7 +34,7 @@ The API will be available at `http://localhost:8000`
 
 The model will be automatically downloaded on first run.
 
-### Option 2: Run with Docker
+### Option 3: Build Docker Image Locally
 
 1. **Build the Docker image:**
 ```bash
@@ -37,7 +48,7 @@ docker run -p 8000:8000 object-detection-api
 
 The API will be available at `http://localhost:8000`
 
-### Option 3: Run Locally
+### Option 4: Run Locally
 
 1. **Install dependencies:**
 ```bash
@@ -336,6 +347,55 @@ This script:
 Bash script to test all API endpoints:
 ```bash
 ./examples/test_api.sh test_image.jpg
+```
+
+## CI/CD and Docker Hub Integration
+
+This repository is configured with automated Docker builds and publishing to Docker Hub using GitHub Actions.
+
+### Automatic Docker Builds
+
+Every push to the `main` or `master` branch and every version tag triggers an automatic Docker build and push to Docker Hub.
+
+### Docker Hub Images
+
+Pre-built Docker images are available on Docker Hub:
+- **Latest stable**: `<your-dockerhub-username>/ml-models:latest`
+- **Version tags**: `<your-dockerhub-username>/ml-models:v1.0.0`
+- **Branch builds**: `<your-dockerhub-username>/ml-models:main`
+
+### Setting Up Docker Hub Publishing (For Maintainers)
+
+To enable automated Docker Hub publishing, configure the following GitHub secrets in your repository settings:
+
+1. Go to your repository on GitHub
+2. Navigate to Settings → Secrets and variables → Actions
+3. Add the following secrets:
+   - `DOCKER_USERNAME`: Your Docker Hub username
+   - `DOCKER_PASSWORD`: Your Docker Hub access token or password
+
+**Note**: For security, it's recommended to use a Docker Hub access token instead of your password. You can create one at https://hub.docker.com/settings/security
+
+### Workflow Triggers
+
+The Docker build workflow is triggered by:
+- **Push to main/master branch**: Builds and pushes with `latest` tag
+- **Version tags** (e.g., `v1.0.0`): Builds and pushes with version tags (`1.0.0`, `1.0`, `1`, and `latest`)
+- **Pull requests**: Builds only (no push to Docker Hub)
+
+### Manual Docker Build and Push
+
+To manually build and push to Docker Hub:
+
+```bash
+# Build the image
+docker build -t <your-dockerhub-username>/ml-models:latest .
+
+# Log in to Docker Hub
+docker login
+
+# Push the image
+docker push <your-dockerhub-username>/ml-models:latest
 ```
 
 ## License
