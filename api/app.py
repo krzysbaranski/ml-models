@@ -3,6 +3,10 @@ FastAPI application for object detection on image frames
 Suitable for integration with home security camera systems
 """
 import base64
+import os
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import Response, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import logging
 import time
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
@@ -25,6 +29,11 @@ app = FastAPI(
     description="API service for object detection on single image frames using MediaPipe",
     version="1.0.0"
 )
+
+# Mount static files
+static_path = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 # Initialize the object detector
 logger.info("Initializing object detector...")
@@ -61,9 +70,21 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "/detect": "POST - Upload an image for object detection",
+            "/detect/image": "POST - Upload an image and get annotated image only",
+            "/upload": "GET - Web interface for uploading images",
             "/health": "GET - Health check endpoint"
         }
     }
+
+
+@app.get("/upload")
+async def upload_page():
+    """Serve the image upload web interface"""
+    html_path = os.path.join(os.path.dirname(__file__), "static", "upload.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    else:
+        raise HTTPException(status_code=404, detail="Upload page not found")
 
 
 @app.get("/health")
