@@ -280,6 +280,14 @@
         // Keep track of blob URLs to revoke them when no longer needed
         let currentAnnotatedImageUrl = null;
         
+        // Helper function to cleanup blob URLs
+        function cleanupBlobUrl() {
+            if (currentAnnotatedImageUrl) {
+                URL.revokeObjectURL(currentAnnotatedImageUrl);
+                currentAnnotatedImageUrl = null;
+            }
+        }
+        
         // Click to upload
         uploadArea.addEventListener('click', () => {
             fileInput.click();
@@ -332,10 +340,7 @@
         
         async function uploadImage(file) {
             // Revoke previous blob URL to prevent memory leak
-            if (currentAnnotatedImageUrl) {
-                URL.revokeObjectURL(currentAnnotatedImageUrl);
-                currentAnnotatedImageUrl = null;
-            }
+            cleanupBlobUrl();
             
             // Hide previous results and errors
             previewContainer.classList.remove('active');
@@ -375,10 +380,7 @@
         
         function uploadAnother() {
             // Revoke blob URL when user uploads a new image
-            if (currentAnnotatedImageUrl) {
-                URL.revokeObjectURL(currentAnnotatedImageUrl);
-                currentAnnotatedImageUrl = null;
-            }
+            cleanupBlobUrl();
             
             previewContainer.classList.remove('active');
             uploadArea.style.display = 'block';
