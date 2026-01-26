@@ -3,8 +3,6 @@ MediaPipe Object Detection Module
 Provides object detection functionality using MediaPipe's TFLite model
 """
 import os
-import urllib.request
-import textwrap
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -12,15 +10,7 @@ import cv2
 import numpy as np
 from typing import List
 
-try:
-    import requests
-    REQUESTS_AVAILABLE = True
-except ImportError:
-    REQUESTS_AVAILABLE = False
-
-
 # Model configuration
-MODEL_URL = "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/latest/efficientdet_lite0.tflite"
 MODEL_PATH = "models/efficientdet_lite0.tflite"
 
 
@@ -30,7 +20,13 @@ class ObjectDetector:
     def __init__(self, model_path: str = MODEL_PATH):
         """Initialize the object detector with the specified model"""
         self.model_path = model_path
-        self._ensure_model_exists()
+        
+        # Ensure model file exists
+        if not os.path.exists(self.model_path):
+            raise FileNotFoundError(
+                f"Model file not found at {self.model_path}. "
+                f"Please ensure the model file is present in the repository."
+            )
         
         # Create an ObjectDetector object
         base_options = python.BaseOptions(model_asset_path=self.model_path)
@@ -40,47 +36,6 @@ class ObjectDetector:
             max_results=10
         )
         self.detector = vision.ObjectDetector.create_from_options(options)
-    
-    def _ensure_model_exists(self):
-        """Download the model if it doesn't exist"""
-        if not os.path.exists(self.model_path):
-            os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
-            print(f"Downloading model from {MODEL_URL}...")
-            
-            try:
-                # Try to download with requests library if available
-                if REQUESTS_AVAILABLE:
-                    response = requests.get(MODEL_URL, timeout=30)
-                    response.raise_for_status()
-                    with open(self.model_path, 'wb') as f:
-                        f.write(response.content)
-                    print(f"Model downloaded to {self.model_path}")
-                else:
-                    # Fall back to urllib with headers
-                    req = urllib.request.Request(
-                        MODEL_URL,
-                        headers={'User-Agent': 'Mozilla/5.0'}
-                    )
-                    
-                    with urllib.request.urlopen(req, timeout=30) as response:
-                        with open(self.model_path, 'wb') as out_file:
-                            out_file.write(response.read())
-                    
-                    print(f"Model downloaded to {self.model_path}")
-            except Exception as e:
-                error_msg = textwrap.dedent(f"""
-                    Failed to download model: {str(e)}
-                    
-                    Please manually download the model from:
-                    {MODEL_URL}
-                    
-                    And save it to:
-                    {self.model_path}
-                    
-                    Or run:
-                    wget -O {self.model_path} {MODEL_URL}
-                """)
-                raise RuntimeError(error_msg)
     
     def detect(self, image: np.ndarray) -> vision.ObjectDetectorResult:
         """

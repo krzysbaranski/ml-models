@@ -23,8 +23,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY api/ ./api/
 
-# Create models directory
-RUN mkdir -p models
+# Copy model file from repository
+COPY contrib/models/efficientdet_lite0/efficientdet.tflite ./models/efficientdet_lite0.tflite
 
 # Expose port
 EXPOSE 8000
