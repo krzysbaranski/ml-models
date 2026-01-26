@@ -5,9 +5,9 @@ services:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      # Optional: Mount models directory to persist the model
-      - ./models:/app/models
+    # Note: Model is now bundled in the Docker image, no volume mount needed
+    # volumes:
+    #   - ./models:/app/models
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
