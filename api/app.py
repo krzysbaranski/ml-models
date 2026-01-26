@@ -38,7 +38,7 @@ async def log_requests(request: Request, call_next):
     """Log all HTTP requests and responses"""
     start_time = time.time()
     
-    # Log request
+    # Log request - only path without query parameters
     logger.info(f"Request: {request.method} {request.url.path}")
     
     # Process request
@@ -56,7 +56,6 @@ async def log_requests(request: Request, call_next):
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
-    logger.debug("Root endpoint called")
     return {
         "service": "Home Security Camera Object Detection API",
         "version": "1.0.0",
@@ -70,7 +69,6 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check endpoint"""
-    logger.debug("Health check endpoint called")
     return {"status": "healthy"}
 
 
