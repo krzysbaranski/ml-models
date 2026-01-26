@@ -3,11 +3,21 @@ FastAPI application for object detection on image frames
 Suitable for integration with home security camera systems
 """
 import base64
-from fastapi import FastAPI, File, UploadFile, HTTPException
+import logging
+import time
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import Response, JSONResponse
 import cv2
 import numpy as np
 from object_detector import ObjectDetector
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -17,7 +27,30 @@ app = FastAPI(
 )
 
 # Initialize the object detector
+logger.info("Initializing object detector...")
 detector = ObjectDetector()
+logger.info("Object detector initialized successfully")
+
+
+# Middleware for logging requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all HTTP requests and responses"""
+    start_time = time.time()
+    
+    # Log request - only path without query parameters
+    logger.info(f"Request: {request.method} {request.url.path}")
+    
+    # Process request
+    response = await call_next(request)
+    
+    # Calculate processing time
+    process_time = time.time() - start_time
+    
+    # Log response
+    logger.info(f"Response: {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+    
+    return response
 
 
 @app.get("/")
@@ -56,6 +89,7 @@ async def detect_objects(
     Returns:
         JSON response with detection results and optionally annotated image
     """
+    logger.info(f"Object detection request received - File: {file.filename}, Return image: {return_image}, Format: {image_format}")
     try:
         # Read image file
         contents = await file.read()
@@ -63,13 +97,17 @@ async def detect_objects(
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         if image is None:
+            logger.error(f"Invalid image file uploaded: {file.filename}")
             raise HTTPException(status_code=400, detail="Invalid image file")
+        
+        logger.info(f"Image loaded successfully - Shape: {image.shape}")
         
         # Perform object detection
         detection_result = detector.detect(image)
         
         # Format results
         detections = detector.format_detection_results(detection_result)
+        logger.info(f"Detection complete - Found {len(detections)} objects")
         
         response_data = {
             "detections": detections,
@@ -94,10 +132,12 @@ async def detect_objects(
             # Return JSON with base64 encoded image
             response_data["annotated_image"] = base64.b64encode(image_bytes).decode('utf-8')
             response_data["image_format"] = image_format
+            logger.debug(f"Annotated image added to response - Size: {len(image_bytes)} bytes")
         
         return JSONResponse(content=response_data)
         
     except Exception as e:
+        logger.exception(f"Error processing image {file.filename}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 
@@ -116,6 +156,7 @@ async def detect_objects_image_only(
     Returns:
         Annotated image with bounding boxes
     """
+    logger.info(f"Image-only detection request received - File: {file.filename}, Format: {image_format}")
     try:
         # Read image file
         contents = await file.read()
@@ -123,10 +164,17 @@ async def detect_objects_image_only(
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         if image is None:
+            logger.error(f"Invalid image file uploaded: {file.filename}")
             raise HTTPException(status_code=400, detail="Invalid image file")
+        
+        logger.info(f"Image loaded successfully - Shape: {image.shape}")
         
         # Perform object detection
         detection_result = detector.detect(image)
+        
+        # Get detection count for logging
+        detection_count = len(detection_result.detections)
+        logger.info(f"Detection complete - Found {detection_count} objects")
         
         # Annotate image
         annotated_image = detector.annotate_image(image, detection_result)
@@ -144,12 +192,15 @@ async def detect_objects_image_only(
         _, buffer = cv2.imencode(ext, annotated_image, encode_param)
         image_bytes = buffer.tobytes()
         
+        logger.debug(f"Returning annotated image - Size: {len(image_bytes)} bytes, Type: {media_type}")
         return Response(content=image_bytes, media_type=media_type)
         
     except Exception as e:
+        logger.exception(f"Error processing image {file.filename}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 
 if __name__ == "__main__":
     import uvicorn
+    logger.info("Starting Home Security Camera Object Detection API on 0.0.0.0:8000")
     uvicorn.run(app, host="0.0.0.0", port=8000)
