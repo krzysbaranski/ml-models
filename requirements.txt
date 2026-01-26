@@ -5,4 +5,4 @@ python-multipart==0.0.18
 opencv-python==4.9.0.80
 mediapipe==0.10.14
 numpy==1.26.4
-requests==2.31.0
+requests==2.32.4
