@@ -3,12 +3,16 @@ MediaPipe Object Detection Module
 Provides object detection functionality using MediaPipe's TFLite model
 """
 import os
+import logging
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import cv2
 import numpy as np
 from typing import List
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Model configuration
 MODEL_PATH = "models/efficientdet_lite0.tflite"
@@ -19,6 +23,7 @@ class ObjectDetector:
     
     def __init__(self, model_path: str = MODEL_PATH):
         """Initialize the object detector with the specified model"""
+        logger.info(f"Initializing ObjectDetector with model path: {model_path}")
         self.model_path = model_path
         
         # Ensure model file exists
@@ -29,6 +34,7 @@ class ObjectDetector:
             )
         
         # Create an ObjectDetector object
+        logger.info("Creating MediaPipe ObjectDetector instance...")
         base_options = python.BaseOptions(model_asset_path=self.model_path)
         options = vision.ObjectDetectorOptions(
             base_options=base_options,
@@ -36,6 +42,7 @@ class ObjectDetector:
             max_results=10
         )
         self.detector = vision.ObjectDetector.create_from_options(options)
+        logger.info("MediaPipe ObjectDetector instance created successfully")
     
     def detect(self, image: np.ndarray) -> vision.ObjectDetectorResult:
         """
