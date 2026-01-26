@@ -86,10 +86,24 @@ Returns API information and available endpoints.
   "version": "1.0.0",
   "endpoints": {
     "/detect": "POST - Upload an image for object detection",
+    "/detect/image": "POST - Upload an image and get annotated image only",
+    "/upload": "GET - Web interface for uploading images",
     "/health": "GET - Health check endpoint"
   }
 }
 ```
+
+### `GET /upload`
+Web interface for uploading and processing images with a visual interface.
+
+**Usage:**
+Open `http://localhost:8000/upload` in your browser to access a user-friendly web form where you can:
+- Upload images via drag-and-drop or file selection
+- View the original image
+- See the annotated image with detected objects
+- Process multiple images easily
+
+This is the easiest way to test the object detection API interactively.
 
 ### `GET /health`
 Health check endpoint.
@@ -164,6 +178,18 @@ curl -X POST "http://localhost:8000/detect/image" \
 ```
 
 ## Usage Examples
+
+### Web Interface (Easiest)
+
+Simply open your browser and navigate to:
+```
+http://localhost:8000/upload
+```
+
+This provides a visual interface where you can:
+1. Drag and drop an image or click to select one
+2. View the original image alongside the annotated result
+3. See detected objects with bounding boxes in real-time
 
 ### Python Client Example
 
