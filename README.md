@@ -16,6 +16,7 @@ A standalone API service for object detection on single image frames, suitable f
 ### Option 1: Pull from Docker Hub (Recommended)
 
 ```bash
+# Replace <your-dockerhub-username> with the actual Docker Hub username
 docker pull <your-dockerhub-username>/ml-models:latest
 docker run -p 8000:8000 <your-dockerhub-username>/ml-models:latest
 ```
@@ -359,7 +360,7 @@ Every push to the `main` or `master` branch and every version tag triggers an au
 
 ### Docker Hub Images
 
-Pre-built Docker images are available on Docker Hub:
+Pre-built Docker images are available on Docker Hub (replace `<your-dockerhub-username>` with the actual username):
 - **Latest stable**: `<your-dockerhub-username>/ml-models:latest`
 - **Version tags**: `<your-dockerhub-username>/ml-models:v1.0.0`
 - **Branch builds**: `<your-dockerhub-username>/ml-models:main`
@@ -388,6 +389,7 @@ The Docker build workflow is triggered by:
 To manually build and push to Docker Hub:
 
 ```bash
+# Replace <your-dockerhub-username> with your actual Docker Hub username
 # Build the image
 docker build -t <your-dockerhub-username>/ml-models:latest .
 
