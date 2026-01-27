@@ -14,6 +14,7 @@ from fastapi.responses import Response, JSONResponse
 import cv2
 import numpy as np
 from object_detector import ObjectDetector
+from face_detector import FaceDetector
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +40,11 @@ if os.path.exists(static_path):
 logger.info("Initializing object detector...")
 detector = ObjectDetector()
 logger.info("Object detector initialized successfully")
+
+# Initialize the face detector
+logger.info("Initializing face detector...")
+face_detector = FaceDetector()
+logger.info("Face detector initialized successfully")
 
 
 # Middleware for logging requests
@@ -71,6 +77,8 @@ async def root():
         "endpoints": {
             "/detect": "POST - Upload an image for object detection",
             "/detect/image": "POST - Upload an image and get annotated image only",
+            "/detect_faces": "POST - Upload an image for face detection",
+            "/detect_faces/image": "POST - Upload an image and get annotated image with faces only",
             "/upload": "GET - Web interface for uploading images",
             "/health": "GET - Health check endpoint"
         }
@@ -199,6 +207,134 @@ async def detect_objects_image_only(
         
         # Annotate image
         annotated_image = detector.annotate_image(image, detection_result)
+        
+        # Encode image
+        if image_format.lower() == "png":
+            encode_param = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]
+            ext = ".png"
+            media_type = "image/png"
+        else:
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+            ext = ".jpg"
+            media_type = "image/jpeg"
+        
+        _, buffer = cv2.imencode(ext, annotated_image, encode_param)
+        image_bytes = buffer.tobytes()
+        
+        logger.debug(f"Returning annotated image - Size: {len(image_bytes)} bytes, Type: {media_type}")
+        return Response(content=image_bytes, media_type=media_type)
+        
+    except Exception as e:
+        logger.exception(f"Error processing image {file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+
+@app.post("/detect_faces")
+async def detect_faces(
+    file: UploadFile = File(...),
+    return_image: bool = True,
+    image_format: str = "jpeg"
+):
+    """
+    Detect faces in an uploaded image
+    
+    Args:
+        file: Image file (JPEG, PNG, etc.)
+        return_image: Whether to return annotated image (default: True)
+        image_format: Format for returned image - 'jpeg' or 'png' (default: 'jpeg')
+        
+    Returns:
+        JSON response with detection results and optionally annotated image
+    """
+    logger.info(f"Face detection request received - File: {file.filename}, Return image: {return_image}, Format: {image_format}")
+    try:
+        # Read image file
+        contents = await file.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if image is None:
+            logger.error(f"Invalid image file uploaded: {file.filename}")
+            raise HTTPException(status_code=400, detail="Invalid image file")
+        
+        logger.info(f"Image loaded successfully - Shape: {image.shape}")
+        
+        # Perform face detection
+        detection_result = face_detector.detect(image)
+        
+        # Format results
+        detections = face_detector.format_detection_results(detection_result)
+        logger.info(f"Detection complete - Found {len(detections)} faces")
+        
+        response_data = {
+            "detections": detections,
+            "count": len(detections)
+        }
+        
+        # If return_image is True, return annotated image
+        if return_image:
+            annotated_image = face_detector.annotate_image(image, detection_result)
+            
+            # Encode image
+            if image_format.lower() == "png":
+                encode_param = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]
+                ext = ".png"
+            else:
+                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+                ext = ".jpg"
+            
+            _, buffer = cv2.imencode(ext, annotated_image, encode_param)
+            image_bytes = buffer.tobytes()
+            
+            # Return JSON with base64 encoded image
+            response_data["annotated_image"] = base64.b64encode(image_bytes).decode('utf-8')
+            response_data["image_format"] = image_format
+            logger.debug(f"Annotated image added to response - Size: {len(image_bytes)} bytes")
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        logger.exception(f"Error processing image {file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+
+@app.post("/detect_faces/image")
+async def detect_faces_image_only(
+    file: UploadFile = File(...),
+    image_format: str = "jpeg"
+):
+    """
+    Detect faces and return only the annotated image
+    
+    Args:
+        file: Image file (JPEG, PNG, etc.)
+        image_format: Format for returned image - 'jpeg' or 'png' (default: 'jpeg')
+        
+    Returns:
+        Annotated image with bounding boxes around faces
+    """
+    logger.info(f"Image-only face detection request received - File: {file.filename}, Format: {image_format}")
+    try:
+        # Read image file
+        contents = await file.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if image is None:
+            logger.error(f"Invalid image file uploaded: {file.filename}")
+            raise HTTPException(status_code=400, detail="Invalid image file")
+        
+        logger.info(f"Image loaded successfully - Shape: {image.shape}")
+        
+        # Perform face detection
+        detection_result = face_detector.detect(image)
+        
+        # Get detection count for logging
+        detection_count = len(detection_result.detections)
+        logger.info(f"Detection complete - Found {detection_count} faces")
+        
+        # Annotate image
+        annotated_image = face_detector.annotate_image(image, detection_result)
         
         # Encode image
         if image_format.lower() == "png":
