@@ -1,10 +1,11 @@
 # Home Security Camera Object Detection API
 
-A standalone API service for object detection on single image frames, suitable for integration with home security camera systems. Built with FastAPI and MediaPipe, this service can process camera frames and return detected objects with bounding boxes.
+A standalone API service for object detection and face detection on single image frames, suitable for integration with home security camera systems. Built with FastAPI and MediaPipe, this service can process camera frames and return detected objects and faces with bounding boxes.
 
 ## Features
 
 - 🎯 **Object Detection**: Uses MediaPipe's EfficientDet Lite0 TFLite model for fast and accurate detection
+- 👤 **Face Detection**: Uses MediaPipe's BlazeFace Short Range model for fast face detection
 - 🖼️ **Image Annotation**: Returns annotated images with bounding boxes and labels
 - 🐳 **Docker Ready**: Fully containerized for easy deployment
 - 🔄 **Auto-Download**: Automatically downloads the model on first run
@@ -87,6 +88,8 @@ Returns API information and available endpoints.
   "endpoints": {
     "/detect": "POST - Upload an image for object detection",
     "/detect/image": "POST - Upload an image and get annotated image only",
+    "/detect_faces": "POST - Upload an image for face detection",
+    "/detect_faces/image": "POST - Upload an image and get annotated image with faces only",
     "/upload": "GET - Web interface for uploading images",
     "/health": "GET - Health check endpoint"
   }
@@ -175,6 +178,65 @@ curl -X POST "http://localhost:8000/detect/image" \
   -F "file=@path/to/your/image.jpg" \
   -F "image_format=jpeg" \
   --output annotated_image.jpg
+```
+
+### `POST /detect_faces`
+Face detection endpoint. Accepts an image file and returns detection results with optional annotated image.
+
+**Parameters:**
+- `file` (required): Image file (multipart/form-data)
+- `return_image` (optional): Whether to return annotated image (default: true)
+- `image_format` (optional): Format for returned image - 'jpeg' or 'png' (default: 'jpeg')
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:8000/detect_faces" \
+  -F "file=@path/to/your/image.jpg" \
+  -F "return_image=true" \
+  -F "image_format=jpeg"
+```
+
+**Example Response:**
+```json
+{
+  "detections": [
+    {
+      "bbox": {
+        "x": 139,
+        "y": 151,
+        "width": 137,
+        "height": 137
+      },
+      "score": 0.6036314964294434,
+      "keypoints": [
+        {"x": 0.4316, "y": 0.4963},
+        {"x": 0.5808, "y": 0.4580},
+        {"x": 0.5291, "y": 0.5479},
+        {"x": 0.5479, "y": 0.6190},
+        {"x": 0.3546, "y": 0.5509},
+        {"x": 0.6647, "y": 0.4723}
+      ]
+    }
+  ],
+  "count": 1,
+  "annotated_image": "base64_encoded_image_data...",
+  "image_format": "jpeg"
+}
+```
+
+### `POST /detect_faces/image`
+Returns only the annotated image with face bounding boxes (no JSON response).
+
+**Parameters:**
+- `file` (required): Image file (multipart/form-data)
+- `image_format` (optional): Format for returned image - 'jpeg' or 'png' (default: 'jpeg')
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:8000/detect_faces/image" \
+  -F "file=@path/to/your/image.jpg" \
+  -F "image_format=jpeg" \
+  --output annotated_face.jpg
 ```
 
 ## Usage Examples
@@ -285,19 +347,42 @@ curl -X POST "http://localhost:8000/detect" \
   -F "return_image=false"
 ```
 
+**Detect faces (JSON response with base64 image):**
+```bash
+curl -X POST "http://localhost:8000/detect_faces" \
+  -F "file=@test_image.jpg" \
+  | jq '.detections'
+```
+
+**Get only annotated face image:**
+```bash
+curl -X POST "http://localhost:8000/detect_faces/image" \
+  -F "file=@test_image.jpg" \
+  --output result_faces.jpg
+```
+
+**Detect faces without returning image (faster):**
+```bash
+curl -X POST "http://localhost:8000/detect_faces" \
+  -F "file=@test_image.jpg" \
+  -F "return_image=false"
+```
+
 ## Architecture
 
 ```
 ml-models/
 ├── api/
 │   ├── app.py              # FastAPI application
-│   └── object_detector.py  # MediaPipe object detection wrapper
+│   ├── object_detector.py  # MediaPipe object detection wrapper
+│   └── face_detector.py    # MediaPipe face detection wrapper
 ├── examples/               # Example usage scripts
 │   ├── client_example.py   # Python client example
 │   ├── security_monitor.py # Continuous monitoring example
 │   └── test_api.sh         # Bash testing script
 ├── models/                 # Model files (auto-downloaded)
-│   └── efficientdet_lite0.tflite
+│   ├── efficientdet_lite0.tflite
+│   └── blaze_face_short_range.tflite
 ├── Dockerfile             # Docker configuration
 ├── requirements.txt       # Python dependencies
 ├── download_model.sh      # Script to manually download model
@@ -306,6 +391,7 @@ ml-models/
 
 ## Model Information
 
+### Object Detection Model
 - **Model**: EfficientDet Lite0
 - **Framework**: TensorFlow Lite (via MediaPipe)
 - **Input**: RGB images
@@ -313,15 +399,33 @@ ml-models/
 - **Categories**: COCO dataset categories (person, car, dog, cat, etc.)
 - **Auto-download**: The model is automatically downloaded on first run from MediaPipe's official repository
 
+### Face Detection Model
+- **Model**: BlazeFace Short Range
+- **Framework**: TensorFlow Lite (via MediaPipe)
+- **Input**: RGB images
+- **Output**: Face detections with bounding boxes, confidence scores, and 6 facial keypoints
+- **Use Case**: Optimized for detecting faces within 2 meters from the camera
+- **Model File**: `contrib/models/blaze_face_short_range/blaze_face_short_range.tflite`
+
 ## Configuration
 
-You can modify the detection parameters in `api/object_detector.py`:
+You can modify the object detection parameters in `api/object_detector.py`:
 
 ```python
 options = vision.ObjectDetectorOptions(
     base_options=base_options,
     score_threshold=0.5,  # Minimum confidence score
     max_results=10        # Maximum number of detections
+)
+```
+
+You can modify the face detection parameters in `api/face_detector.py`:
+
+```python
+options = vision.FaceDetectorOptions(
+    base_options=base_options,
+    min_detection_confidence=0.5,  # Minimum confidence score
+    min_suppression_threshold=0.3  # Non-maximum suppression threshold
 )
 ```
 
