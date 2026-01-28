@@ -24,8 +24,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY api/ ./api/
 
 # Copy model file from repository
-COPY contrib/models/efficientdet_lite0/efficientdet.tflite ./models/efficientdet_lite0.tflite
-COPY contrib/models/blaze_face_short_range/blaze_face_short_range.tflite ./models/blaze_face_short_range.tflite
+COPY models/efficientdet_lite0.tflite ./models/efficientdet_lite0.tflite
+COPY models/blaze_face_short_range.tflite ./models/blaze_face_short_range.tflite
 
 # Expose port
 EXPOSE 8000
