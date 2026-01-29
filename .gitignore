@@ -114,7 +114,9 @@ dmypy.json
 
 # Model files
 models/*.tflite
+models/*.task
 api/models/*.tflite
+api/models/*.task
 
 # Test images
 test_images/

@@ -68,6 +68,14 @@ pip install -r requirements.txt
 Or manually download from: https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/latest/efficientdet_lite0.tflite
 and save to `models/efficientdet_lite0.tflite`
 
+Face detection model from: https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite
+and save to `models/blaze_face_short_range.tflite`
+
+Gesture recognizer model from: https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task
+and save to `models/gesture_recognizer.task`
+
+**Note:** The gesture recognition feature is optional. If the `gesture_recognizer.task` model is not present, the API will start normally but the `/recognize_gesture` endpoints will return a 503 error with instructions to download the model.
+
 3. **Run the API:**
 ```bash
 cd api

@@ -1,5 +1,0 @@
-# This is a placeholder file. The actual gesture_recognizer.task model should be downloaded from:
-# https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task
-# 
-# Due to network restrictions in this environment, the actual model file needs to be downloaded
-# separately and placed in this location.

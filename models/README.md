@@ -65,3 +65,25 @@ curl -L -o gesture_recognizer.task https://storage.googleapis.com/mediapipe-mode
 - All models are from [Google's MediaPipe project](https://developers.google.com/mediapipe)
 - Models are automatically included in Docker builds
 - The API will fail to start if required model files are missing
+
+## Important Notes
+
+### Gesture Recognition Model
+
+The `gesture_recognizer.task` model file is **not included in the repository** due to its size (~9.8 MB). You must download it separately:
+
+```bash
+cd models
+wget https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task
+```
+
+Or use the automated download script from the repository root:
+```bash
+./download_model.sh
+```
+
+The API will start without this model, but gesture recognition endpoints will return a 503 error until the model is downloaded.
+
+### Model Licensing
+
+All models are from Google's MediaPipe project and are subject to the [Apache License 2.0](https://github.com/google/mediapipe/blob/master/LICENSE).
