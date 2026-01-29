@@ -2,10 +2,13 @@
 
 A standalone API service for object detection and face detection on single image frames, suitable for integration with home security camera systems. Built with FastAPI and MediaPipe, this service can process camera frames and return detected objects and faces with bounding boxes.
 
+**NEW: Hand gesture recognition** - Recognize 7 common hand gestures: 👍 (thumbs up), 👎 (thumbs down), ✌️ (victory), ☝️ (pointing up), ✊ (closed fist), 👋 (open palm), and 🤟 (ILY sign).
+
 ## Features
 
 - 🎯 **Object Detection**: Uses MediaPipe's EfficientDet Lite0 TFLite model for fast and accurate detection
 - 👤 **Face Detection**: Uses MediaPipe's BlazeFace Short Range model for fast face detection
+- ✋ **Gesture Recognition**: Uses MediaPipe's Gesture Recognizer model to detect hand gestures (👍, 👎, ✌️, ☝️, ✊, 👋, 🤟)
 - 🖼️ **Image Annotation**: Returns annotated images with bounding boxes and labels
 - 🐳 **Docker Ready**: Fully containerized for easy deployment
 - 🔄 **Auto-Download**: Automatically downloads the model on first run
@@ -90,6 +93,8 @@ Returns API information and available endpoints.
     "/detect/image": "POST - Upload an image and get annotated image only",
     "/detect_faces": "POST - Upload an image for face detection",
     "/detect_faces/image": "POST - Upload an image and get annotated image with faces only",
+    "/recognize_gesture": "POST - Upload an image for gesture recognition (if model is available)",
+    "/recognize_gesture/image": "POST - Upload an image and get annotated image with gestures only (if model is available)",
     "/upload": "GET - Web interface for uploading images",
     "/health": "GET - Health check endpoint"
   }
@@ -239,6 +244,54 @@ curl -X POST "http://localhost:8000/detect_faces/image" \
   --output annotated_face.jpg
 ```
 
+**Example Response:**
+```json
+{
+  "recognitions": [
+    {
+      "gesture": "Thumb_Up",
+      "score": 0.98,
+      "handedness": "Right",
+      "handedness_score": 0.99,
+      "landmarks": [
+        {"x": 0.521, "y": 0.623, "z": -0.012},
+        {"x": 0.498, "y": 0.542, "z": -0.034},
+        ...
+      ]
+    }
+  ],
+  "count": 1,
+  "annotated_image": "base64_encoded_image_data...",
+  "image_format": "jpeg"
+}
+```
+
+**Supported Gestures:**
+- `Thumb_Up` 👍 - Thumbs up
+- `Thumb_Down` 👎 - Thumbs down
+- `Victory` ✌️ - Peace/Victory sign
+- `Pointing_Up` ☝️ - Index finger pointing up
+- `Closed_Fist` ✊ - Closed fist
+- `Open_Palm` 👋 - Open hand/waving
+- `ILoveYou` 🤟 - ILY sign
+
+### `POST /recognize_gesture/image`
+Returns only the annotated image with hand landmarks and gesture labels (no JSON response).
+
+**Note:** This endpoint is only available if the gesture_recognizer.task model file is present in the models/ directory.
+
+**Parameters:**
+- `file` (required): Image file (multipart/form-data)
+- `image_format` (optional): Format for returned image - 'jpeg' or 'png' (default: 'jpeg')
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:8000/recognize_gesture/image" \
+  -F "file=@path/to/your/image.jpg" \
+  -F "image_format=jpeg" \
+  --output annotated_gesture.jpg
+```
+
 ## Usage Examples
 
 ### Web Interface (Easiest)
@@ -361,9 +414,48 @@ curl -X POST "http://localhost:8000/detect_faces/image" \
   --output result_faces.jpg
 ```
 
+### `POST /recognize_gesture`
+Gesture recognition endpoint. Accepts an image file and returns recognition results with optional annotated image.
+
+**Note:** This endpoint is only available if the gesture_recognizer.task model file is present in the models/ directory.
+
+**Parameters:**
+- `file` (required): Image file (multipart/form-data)
+- `return_image` (optional): Whether to return annotated image (default: true)
+- `image_format` (optional): Format for returned image - 'jpeg' or 'png' (default: 'jpeg')
+
+**Example Request:**
+```bash
+curl -X POST "http://localhost:8000/recognize_gesture" \
+  -F "file=@path/to/your/image.jpg" \
+  -F "return_image=true" \
+  -F "image_format=jpeg"
+```
+
 **Detect faces without returning image (faster):**
 ```bash
 curl -X POST "http://localhost:8000/detect_faces" \
+  -F "file=@test_image.jpg" \
+  -F "return_image=false"
+```
+
+**Recognize hand gestures (JSON response with base64 image):**
+```bash
+curl -X POST "http://localhost:8000/recognize_gesture" \
+  -F "file=@test_image.jpg" \
+  | jq '.recognitions'
+```
+
+**Get only annotated gesture image:**
+```bash
+curl -X POST "http://localhost:8000/recognize_gesture/image" \
+  -F "file=@test_image.jpg" \
+  --output result_gestures.jpg
+```
+
+**Recognize gestures without returning image (faster):**
+```bash
+curl -X POST "http://localhost:8000/recognize_gesture" \
   -F "file=@test_image.jpg" \
   -F "return_image=false"
 ```
@@ -373,20 +465,22 @@ curl -X POST "http://localhost:8000/detect_faces" \
 ```
 ml-models/
 ├── api/
-│   ├── app.py              # FastAPI application
-│   ├── object_detector.py  # MediaPipe object detection wrapper
-│   └── face_detector.py    # MediaPipe face detection wrapper
-├── examples/               # Example usage scripts
-│   ├── client_example.py   # Python client example
-│   ├── security_monitor.py # Continuous monitoring example
-│   └── test_api.sh         # Bash testing script
-├── models/                 # Model files (auto-downloaded)
+│   ├── app.py                  # FastAPI application
+│   ├── object_detector.py      # MediaPipe object detection wrapper
+│   ├── face_detector.py        # MediaPipe face detection wrapper
+│   └── gesture_recognizer.py   # MediaPipe gesture recognition wrapper
+├── examples/                   # Example usage scripts
+│   ├── client_example.py       # Python client example
+│   ├── security_monitor.py     # Continuous monitoring example
+│   └── test_api.sh             # Bash testing script
+├── models/                     # Model files (auto-downloaded)
 │   ├── efficientdet_lite0.tflite
-│   └── blaze_face_short_range.tflite
-├── Dockerfile             # Docker configuration
-├── requirements.txt       # Python dependencies
-├── download_model.sh      # Script to manually download model
-└── README.md             # This file
+│   ├── blaze_face_short_range.tflite
+│   └── gesture_recognizer.task
+├── Dockerfile                  # Docker configuration
+├── requirements.txt            # Python dependencies
+├── download_model.sh           # Script to manually download model
+└── README.md                   # This file
 ```
 
 ## Model Information
@@ -407,6 +501,15 @@ ml-models/
 - **Use Case**: Optimized for detecting faces within 2 meters from the camera
 - **Model File**: `contrib/models/blaze_face_short_range/blaze_face_short_range.tflite`
 
+### Gesture Recognition Model
+- **Model**: MediaPipe Gesture Recognizer
+- **Framework**: TensorFlow Lite (via MediaPipe)
+- **Input**: RGB images
+- **Output**: Hand gesture classifications, hand landmarks (21 points per hand), and handedness
+- **Gestures**: Recognizes 7 hand gestures: 👍 Thumb_Up, 👎 Thumb_Down, ✌️ Victory, ☝️ Pointing_Up, ✊ Closed_Fist, 👋 Open_Palm, 🤟 ILoveYou
+- **Model File**: `gesture_recognizer.task`
+- **Download**: https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task
+
 ## Configuration
 
 You can modify the object detection parameters in `api/object_detector.py`:
@@ -426,6 +529,17 @@ options = vision.FaceDetectorOptions(
     base_options=base_options,
     min_detection_confidence=0.5,  # Minimum confidence score
     min_suppression_threshold=0.3  # Non-maximum suppression threshold
+)
+```
+
+You can modify the gesture recognition parameters in `api/gesture_recognizer.py`:
+
+```python
+options = vision.GestureRecognizerOptions(
+    base_options=base_options,
+    min_hand_detection_confidence=0.5,   # Minimum confidence for hand detection
+    min_hand_presence_confidence=0.5,    # Minimum confidence for hand presence
+    min_tracking_confidence=0.5          # Minimum confidence for hand tracking
 )
 ```
 
