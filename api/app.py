@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 from object_detector import ObjectDetector
 from face_detector import FaceDetector
+from gesture_recognizer import GestureRecognizer
 
 # Configure logging
 logging.basicConfig(
@@ -46,6 +47,25 @@ logger.info("Initializing face detector...")
 face_detector = FaceDetector()
 logger.info("Face detector initialized successfully")
 
+# Initialize the gesture recognizer
+try:
+    logger.info("Initializing gesture recognizer...")
+    gesture_recognizer = GestureRecognizer()
+    logger.info("Gesture recognizer initialized successfully")
+    GESTURE_RECOGNIZER_AVAILABLE = True
+except FileNotFoundError as e:
+    logger.warning(f"Gesture recognizer model not found: {e}")
+    logger.warning("Gesture recognition endpoints will not be available")
+    logger.warning("To enable gesture recognition, download the model from:")
+    logger.warning("https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task")
+    logger.warning("And place it in the models/ directory")
+    gesture_recognizer = None
+    GESTURE_RECOGNIZER_AVAILABLE = False
+except Exception as e:
+    logger.error(f"Failed to initialize gesture recognizer: {e}")
+    gesture_recognizer = None
+    GESTURE_RECOGNIZER_AVAILABLE = False
+
 
 # Middleware for logging requests
 @app.middleware("http")
@@ -71,17 +91,24 @@ async def log_requests(request: Request, call_next):
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
+    endpoints = {
+        "/detect": "POST - Upload an image for object detection",
+        "/detect/image": "POST - Upload an image and get annotated image only",
+        "/detect_faces": "POST - Upload an image for face detection",
+        "/detect_faces/image": "POST - Upload an image and get annotated image with faces only",
+        "/upload": "GET - Web interface for uploading images",
+        "/health": "GET - Health check endpoint"
+    }
+    
+    # Add gesture recognition endpoints only if available
+    if GESTURE_RECOGNIZER_AVAILABLE:
+        endpoints["/recognize_gesture"] = "POST - Upload an image for gesture recognition"
+        endpoints["/recognize_gesture/image"] = "POST - Upload an image and get annotated image with gestures only"
+    
     return {
         "service": "Home Security Camera Object Detection API",
         "version": "1.0.0",
-        "endpoints": {
-            "/detect": "POST - Upload an image for object detection",
-            "/detect/image": "POST - Upload an image and get annotated image only",
-            "/detect_faces": "POST - Upload an image for face detection",
-            "/detect_faces/image": "POST - Upload an image and get annotated image with faces only",
-            "/upload": "GET - Web interface for uploading images",
-            "/health": "GET - Health check endpoint"
-        }
+        "endpoints": endpoints
     }
 
 
@@ -335,6 +362,148 @@ async def detect_faces_image_only(
         
         # Annotate image
         annotated_image = face_detector.annotate_image(image, detection_result)
+        
+        # Encode image
+        if image_format.lower() == "png":
+            encode_param = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]
+            ext = ".png"
+            media_type = "image/png"
+        else:
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+            ext = ".jpg"
+            media_type = "image/jpeg"
+        
+        _, buffer = cv2.imencode(ext, annotated_image, encode_param)
+        image_bytes = buffer.tobytes()
+        
+        logger.debug(f"Returning annotated image - Size: {len(image_bytes)} bytes, Type: {media_type}")
+        return Response(content=image_bytes, media_type=media_type)
+        
+    except Exception as e:
+        logger.exception(f"Error processing image {file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+
+@app.post("/recognize_gesture")
+async def recognize_gesture(
+    file: UploadFile = File(...),
+    return_image: bool = True,
+    image_format: str = "jpeg"
+):
+    """
+    Recognize hand gestures in an uploaded image
+    
+    Args:
+        file: Image file (JPEG, PNG, etc.)
+        return_image: Whether to return annotated image (default: True)
+        image_format: Format for returned image - 'jpeg' or 'png' (default: 'jpeg')
+        
+    Returns:
+        JSON response with recognition results and optionally annotated image
+    """
+    if not GESTURE_RECOGNIZER_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="Gesture recognition is not available. Model file not found. "
+                   "Please download gesture_recognizer.task and place it in the models/ directory."
+        )
+    
+    logger.info(f"Gesture recognition request received - File: {file.filename}, Return image: {return_image}, Format: {image_format}")
+    try:
+        # Read image file
+        contents = await file.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if image is None:
+            logger.error(f"Invalid image file uploaded: {file.filename}")
+            raise HTTPException(status_code=400, detail="Invalid image file")
+        
+        logger.info(f"Image loaded successfully - Shape: {image.shape}")
+        
+        # Perform gesture recognition
+        recognition_result = gesture_recognizer.recognize(image)
+        
+        # Format results
+        recognitions = gesture_recognizer.format_recognition_results(recognition_result)
+        logger.info(f"Recognition complete - Found {len(recognitions)} hand(s)")
+        
+        response_data = {
+            "recognitions": recognitions,
+            "count": len(recognitions)
+        }
+        
+        # If return_image is True, return annotated image
+        if return_image:
+            annotated_image = gesture_recognizer.annotate_image(image, recognition_result)
+            
+            # Encode image
+            if image_format.lower() == "png":
+                encode_param = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]
+                ext = ".png"
+            else:
+                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+                ext = ".jpg"
+            
+            _, buffer = cv2.imencode(ext, annotated_image, encode_param)
+            image_bytes = buffer.tobytes()
+            
+            # Return JSON with base64 encoded image
+            response_data["annotated_image"] = base64.b64encode(image_bytes).decode('utf-8')
+            response_data["image_format"] = image_format
+            logger.debug(f"Annotated image added to response - Size: {len(image_bytes)} bytes")
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        logger.exception(f"Error processing image {file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+
+@app.post("/recognize_gesture/image")
+async def recognize_gesture_image_only(
+    file: UploadFile = File(...),
+    image_format: str = "jpeg"
+):
+    """
+    Recognize gestures and return only the annotated image
+    
+    Args:
+        file: Image file (JPEG, PNG, etc.)
+        image_format: Format for returned image - 'jpeg' or 'png' (default: 'jpeg')
+        
+    Returns:
+        Annotated image with hand landmarks and gesture labels
+    """
+    if not GESTURE_RECOGNIZER_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="Gesture recognition is not available. Model file not found. "
+                   "Please download gesture_recognizer.task and place it in the models/ directory."
+        )
+    
+    logger.info(f"Image-only gesture recognition request received - File: {file.filename}, Format: {image_format}")
+    try:
+        # Read image file
+        contents = await file.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if image is None:
+            logger.error(f"Invalid image file uploaded: {file.filename}")
+            raise HTTPException(status_code=400, detail="Invalid image file")
+        
+        logger.info(f"Image loaded successfully - Shape: {image.shape}")
+        
+        # Perform gesture recognition
+        recognition_result = gesture_recognizer.recognize(image)
+        
+        # Get recognition count for logging
+        recognition_count = len(recognition_result.gestures) if recognition_result.gestures else 0
+        logger.info(f"Recognition complete - Found {recognition_count} hand(s)")
+        
+        # Annotate image
+        annotated_image = gesture_recognizer.annotate_image(image, recognition_result)
         
         # Encode image
         if image_format.lower() == "png":

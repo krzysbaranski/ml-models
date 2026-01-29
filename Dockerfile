@@ -26,6 +26,8 @@ COPY api/ ./api/
 # Copy model file from repository
 COPY models/efficientdet_lite0.tflite ./models/efficientdet_lite0.tflite
 COPY models/blaze_face_short_range.tflite ./models/blaze_face_short_range.tflite
+# Copy gesture recognizer model if it exists
+COPY models/gesture_recognizer.task* ./models/ 2>/dev/null || true
 
 # Expose port
 EXPOSE 8000
