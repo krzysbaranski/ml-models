@@ -14,6 +14,10 @@ OBJ_MODEL_PATH="$MODEL_DIR/efficientdet_lite0.tflite"
 FACE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite"
 FACE_MODEL_PATH="$MODEL_DIR/blaze_face_short_range.tflite"
 
+# Download gesture recognizer model
+GESTURE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task"
+GESTURE_MODEL_PATH="$MODEL_DIR/gesture_recognizer.task"
+
 download_model() {
     local url=$1
     local path=$2
@@ -59,8 +63,11 @@ OBJ_RESULT=$?
 download_model "$FACE_MODEL_URL" "$FACE_MODEL_PATH" "Face detection"
 FACE_RESULT=$?
 
+download_model "$GESTURE_MODEL_URL" "$GESTURE_MODEL_PATH" "Gesture recognition"
+GESTURE_RESULT=$?
+
 # Exit with error if any download failed
-if [ $OBJ_RESULT -ne 0 ] || [ $FACE_RESULT -ne 0 ]; then
+if [ $OBJ_RESULT -ne 0 ] || [ $FACE_RESULT -ne 0 ] || [ $GESTURE_RESULT -ne 0 ]; then
     exit 1
 fi
 
